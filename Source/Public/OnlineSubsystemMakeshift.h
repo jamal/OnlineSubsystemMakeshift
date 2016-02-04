@@ -96,6 +96,12 @@ PACKAGE_SCOPE:
 		OnlineAsyncTaskThread(NULL)
 	{}
 
+    /**
+     *	Add an async task onto the task queue for processing
+     * @param AsyncTask - new heap allocated task to process on the async task thread
+     */
+    void QueueAsyncTask(class FOnlineAsyncTask* AsyncTask);
+
 private:
 
 	/** Interface to the session services */

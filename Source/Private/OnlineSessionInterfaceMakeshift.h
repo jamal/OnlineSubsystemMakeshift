@@ -7,6 +7,9 @@
 #include "OnlineSubsystemMakeshiftPackage.h"
 #include "LANBeacon.h"
 
+/** Async Task timeout value */
+#define ASYNC_TASK_TIMEOUT 15.0f
+
 /**
  * Interface definition for the online services session services 
  * Session services are defined as anything related managing a session 
@@ -48,6 +51,8 @@ private:
 	 * @return true if yes
 	 */
 	bool NeedsToAdvertise( FNamedOnlineSession& Session );
+
+    uint32 CreateInternetSession(int32 HostingPlayerNum, class FNamedOnlineSession* Session);
 
 	/**
 	 * Updates the status of LAN session (creates it if needed, shuts down if not)

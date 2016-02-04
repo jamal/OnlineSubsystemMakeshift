@@ -19,6 +19,116 @@ FOnlineSessionInfoMakeshift::FOnlineSessionInfoMakeshift() :
 {
 }
 
+class FOnlineAsyncTaskMakeshiftCreateServer : public FOnlineAsyncTaskBasic<FOnlineSubsystemMakeshift>
+{
+private:
+
+    /** Has this request been started */
+    bool bInit;
+    /** Name of session being created */
+    FName SessionName;
+
+    /** Hidden on purpose */
+    FOnlineAsyncTaskMakeshiftCreateServer() :
+        bInit(false),
+        SessionName(NAME_None)
+    {
+    }
+
+public:
+
+    FOnlineAsyncTaskMakeshiftCreateServer(class FOnlineSubsystemMakeshift* InSubsystem, FName InSessionName) :
+        FOnlineAsyncTaskBasic(InSubsystem),
+        bInit(false),
+        SessionName(InSessionName)
+    {
+    }
+
+    /**
+     *	Get a human readable description of task
+     */
+    virtual FString ToString() const override
+    {
+        return FString::Printf(TEXT("FOnlineAsyncTaskNullEndSession bWasSuccessful: %d SessionName: %s"), bWasSuccessful, *SessionName.ToString());
+    }
+
+    /**
+     * Give the async task time to do its work
+     * Can only be called on the async task manager thread
+     */
+    virtual void Tick() override
+    {
+        if (!bInit)
+        {
+            // TODO: Initialize connection + send create request
+            UE_LOG_ONLINE(Warning, TEXT("Not starting an internet session :("));
+            bInit = true;
+        }
+
+        if (GetElapsedTime() >= ASYNC_TASK_TIMEOUT)
+        {
+            bIsComplete = true;
+            bWasSuccessful = false;
+        }
+
+//        bIsComplete = true;
+//        bWasSuccessful = true;
+    }
+
+    /**
+     * Give the async task a chance to marshal its data back to the game thread
+     * Can only be called on the game thread by the async task manager
+     */
+    virtual void Finalize() override
+    {
+        FOnlineSessionMakeshiftPtr SessionInt = StaticCastSharedPtr<FOnlineSessionMakeshift>(Subsystem->GetSessionInterface());
+
+        if (bWasSuccessful)
+        {
+            FNamedOnlineSession* Session = SessionInt->GetNamedSession(SessionName);
+            if (Session)
+            {
+                // Setup the host session info
+                FOnlineSessionInfoMakeshift* NewSessionInfo = new FOnlineSessionInfoMakeshift();
+                NewSessionInfo->Init(*Subsystem);
+
+                // Create the proper Steam P2P address for this machine
+                NewSessionInfo->HostAddr = ISocketSubsystem::Get()->GetLocalBindAddr(*GLog);
+                UE_LOG_ONLINE(Verbose, TEXT("Server IP: %s"), *NewSessionInfo->HostAddr->ToString(true));
+
+                Session->SessionInfo = MakeShareable(NewSessionInfo);
+
+                Session->SessionState = EOnlineSessionState::Pending;
+
+                UWorld* World = GetWorldForOnline(Subsystem->GetInstanceName());
+                //UpdatePublishedSettings(World, Session);
+
+                SessionInt->RegisterLocalPlayers(Session);
+            }
+            else
+            {
+                UE_LOG_ONLINE(Warning, TEXT("No session %s found to update with Makeshift backend"), *SessionName.ToString());
+            }
+        }
+        else
+        {
+            SessionInt->RemoveNamedSession(SessionName);
+        }
+    }
+
+    /**
+     *	Async task is given a chance to trigger it's delegates
+     */
+    virtual void TriggerDelegates() override
+    {
+        IOnlineSessionPtr SessionInt = Subsystem->GetSessionInterface();
+        if (SessionInt.IsValid())
+        {
+            SessionInt->TriggerOnEndSessionCompleteDelegates(SessionName, bWasSuccessful);
+        }
+    }
+};
+
 void FOnlineSessionInfoMakeshift::Init(const FOnlineSubsystemMakeshift& Subsystem)
 {
 	// Read the IP from the system
@@ -44,139 +154,6 @@ void FOnlineSessionInfoMakeshift::Init(const FOnlineSubsystemMakeshift& Subsyste
 	FPlatformMisc::CreateGuid(OwnerGuid);
 	SessionId = FUniqueNetIdString(OwnerGuid.ToString());
 }
-
-/**
- *	Async task for ending a Makeshift online session
- */
-class FOnlineAsyncTaskMakeshiftEndSession : public FOnlineAsyncTaskBasic<FOnlineSubsystemMakeshift>
-{
-private:
-	/** Name of session ending */
-	FName SessionName;
-
-public:
-	FOnlineAsyncTaskMakeshiftEndSession(class FOnlineSubsystemMakeshift* InSubsystem, FName InSessionName) :
-		FOnlineAsyncTaskBasic(InSubsystem),
-		SessionName(InSessionName)
-	{
-	}
-
-	~FOnlineAsyncTaskMakeshiftEndSession()
-	{
-	}
-
-	/**
-	 *	Get a human readable description of task
-	 */
-	virtual FString ToString() const override
-	{
-		return FString::Printf(TEXT("FOnlineAsyncTaskMakeshiftEndSession bWasSuccessful: %d SessionName: %s"), bWasSuccessful, *SessionName.ToString());
-	}
-
-	/**
-	 * Give the async task time to do its work
-	 * Can only be called on the async task manager thread
-	 */
-	virtual void Tick() override
-	{
-		bIsComplete = true;
-		bWasSuccessful = true;
-	}
-
-	/**
-	 * Give the async task a chance to marshal its data back to the game thread
-	 * Can only be called on the game thread by the async task manager
-	 */
-	virtual void Finalize() override
-	{
-		IOnlineSessionPtr SessionInt = Subsystem->GetSessionInterface();
-		FNamedOnlineSession* Session = SessionInt->GetNamedSession(SessionName);
-		if (Session)
-		{
-			Session->SessionState = EOnlineSessionState::Ended;
-		}
-	}
-
-	/**
-	 *	Async task is given a chance to trigger it's delegates
-	 */
-	virtual void TriggerDelegates() override
-	{
-		IOnlineSessionPtr SessionInt = Subsystem->GetSessionInterface();
-		if (SessionInt.IsValid())
-		{
-			SessionInt->TriggerOnEndSessionCompleteDelegates(SessionName, bWasSuccessful);
-		}
-	}
-};
-
-/**
- *	Async task for destroying a Makeshift online session
- */
-class FOnlineAsyncTaskMakeshiftDestroySession : public FOnlineAsyncTaskBasic<FOnlineSubsystemMakeshift>
-{
-private:
-	/** Name of session ending */
-	FName SessionName;
-
-public:
-	FOnlineAsyncTaskMakeshiftDestroySession(class FOnlineSubsystemMakeshift* InSubsystem, FName InSessionName) :
-		FOnlineAsyncTaskBasic(InSubsystem),
-		SessionName(InSessionName)
-	{
-	}
-
-	~FOnlineAsyncTaskMakeshiftDestroySession()
-	{
-	}
-
-	/**
-	 *	Get a human readable description of task
-	 */
-	virtual FString ToString() const override
-	{
-		return FString::Printf(TEXT("FOnlineAsyncTaskMakeshiftDestroySession bWasSuccessful: %d SessionName: %s"), bWasSuccessful, *SessionName.ToString());
-	}
-
-	/**
-	 * Give the async task time to do its work
-	 * Can only be called on the async task manager thread
-	 */
-	virtual void Tick() override
-	{
-		bIsComplete = true;
-		bWasSuccessful = true;
-	}
-
-	/**
-	 * Give the async task a chance to marshal its data back to the game thread
-	 * Can only be called on the game thread by the async task manager
-	 */
-	virtual void Finalize() override
-	{
-		IOnlineSessionPtr SessionInt = Subsystem->GetSessionInterface();
-		if (SessionInt.IsValid())
-		{
-			FNamedOnlineSession* Session = SessionInt->GetNamedSession(SessionName);
-			if (Session)
-			{
-				SessionInt->RemoveNamedSession(SessionName);
-			}
-		}
-	}
-
-	/**
-	 *	Async task is given a chance to trigger it's delegates
-	 */
-	virtual void TriggerDelegates() override
-	{
-		IOnlineSessionPtr SessionInt = Subsystem->GetSessionInterface();
-		if (SessionInt.IsValid())
-		{
-			SessionInt->TriggerOnDestroySessionCompleteDelegates(SessionName, bWasSuccessful);
-		}
-	}
-};
 
 bool FOnlineSessionMakeshift::CreateSession(int32 HostingPlayerNum, FName SessionName, const FOnlineSessionSettings& NewSessionSettings)
 {
@@ -212,13 +189,29 @@ bool FOnlineSessionMakeshift::CreateSession(int32 HostingPlayerNum, FName Sessio
 		
 		// Unique identifier of this build for compatibility
 		Session->SessionSettings.BuildUniqueId = GetBuildUniqueId();
+        UE_LOG_ONLINE(Warning, TEXT("BuildUniqueId %d"), Session->SessionSettings.BuildUniqueId);
 
 		// Setup the host session info
 		FOnlineSessionInfoMakeshift* NewSessionInfo = new FOnlineSessionInfoMakeshift();
 		NewSessionInfo->Init(*MakeshiftSubsystem);
 		Session->SessionInfo = MakeShareable(NewSessionInfo);
 
-		Result = UpdateLANStatus();
+        if (!NewSessionSettings.bIsLANMatch)
+        {
+            if (Session->SessionSettings.bUsesPresence)
+            {
+                // TODO: Support Lobby Sessions?
+                UE_LOG_ONLINE(Warning, TEXT("Lobby sessions are not supported yet."), *SessionName.ToString());
+            }
+            else
+            {
+                Result = CreateInternetSession(HostingPlayerNum, Session);
+            }
+        }
+        else
+        {
+            Result = UpdateLANStatus();
+        }
 
 		if (Result != ERROR_IO_PENDING)
 		{
@@ -291,6 +284,18 @@ bool FOnlineSessionMakeshift::NeedsToAdvertise( FNamedOnlineSession& Session )
 				Session.SessionSettings.bAllowJoinViaPresence || Session.SessionSettings.bAllowJoinViaPresenceFriendsOnly
 			)
 		);		
+}
+
+uint32 FOnlineSessionMakeshift::CreateInternetSession(int32 HostingPlayerNum, FNamedOnlineSession* Session)
+{
+
+    uint32 Result = E_FAIL;
+
+    FOnlineAsyncTaskMakeshiftCreateServer* NewTask = new FOnlineAsyncTaskMakeshiftCreateServer(MakeshiftSubsystem, Session->SessionName);
+    MakeshiftSubsystem->QueueAsyncTask(NewTask);
+    Result = ERROR_IO_PENDING;
+
+    return Result;
 }
 
 uint32 FOnlineSessionMakeshift::UpdateLANStatus()

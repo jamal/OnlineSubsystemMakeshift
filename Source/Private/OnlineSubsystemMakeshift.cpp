@@ -233,3 +233,9 @@ bool FOnlineSubsystemMakeshift::IsEnabled()
 {
 	return true;
 }
+
+void FOnlineSubsystemMakeshift::QueueAsyncTask(FOnlineAsyncTask* AsyncTask)
+{
+    check(OnlineAsyncTaskThreadRunnable);
+    OnlineAsyncTaskThreadRunnable->AddToInQueue(AsyncTask);
+}
