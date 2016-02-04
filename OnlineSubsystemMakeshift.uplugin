@@ -1,0 +1,21 @@
+{
+	"FileVersion" : 3,
+
+	"FriendlyName" : "Online Subsystem Makeshift",
+	"Version" : 1,
+	"VersionName" : "1.0",
+	"CreatedBy" : "Jamal Fanaian",
+	"CreatedByURL" : "http://github.com/jamal",
+	"EngineVersion" : "4.10.0",
+	"Description" : "A makeshift online subsystem.",
+	"Category" : "Examples",
+	"EnabledByDefault" : true,
+
+	"Modules" :
+	[
+		{
+			"Name" : "OnlineSubsystemMakeshift",
+			"Type" : "Developer"
+		}
+	]
+}
