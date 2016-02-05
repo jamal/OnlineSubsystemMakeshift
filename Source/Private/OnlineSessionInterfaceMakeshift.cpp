@@ -9,6 +9,8 @@
 #include "SocketSubsystem.h"
 #include "LANBeacon.h"
 #include "NboSerializerMakeshift.h"
+#include "Sockets.h"
+#include "IpConnection.h"
 
 #include "VoiceInterface.h"
 
@@ -19,6 +21,8 @@ FOnlineSessionInfoMakeshift::FOnlineSessionInfoMakeshift() :
 {
 }
 
+// TODO: Probably move this to its own file
+// TODO: Probably move this to its own file
 class FOnlineAsyncTaskMakeshiftCreateServer : public FOnlineAsyncTaskBasic<FOnlineSubsystemMakeshift>
 {
 private:
@@ -158,6 +162,7 @@ void FOnlineSessionInfoMakeshift::Init(const FOnlineSubsystemMakeshift& Subsyste
 bool FOnlineSessionMakeshift::CreateSession(int32 HostingPlayerNum, FName SessionName, const FOnlineSessionSettings& NewSessionSettings)
 {
 	uint32 Result = E_FAIL;
+    UE_LOG_ONLINE(Warning, TEXT("CreateSession HostingPlayerNum: %d SessionName: %s"), HostingPlayerNum, *SessionName.ToString());
 
 	// Check for an existing session
 	FNamedOnlineSession* Session = GetNamedSession(SessionName);
@@ -188,8 +193,9 @@ bool FOnlineSessionMakeshift::CreateSession(int32 HostingPlayerNum, FName Sessio
 		}
 		
 		// Unique identifier of this build for compatibility
-		Session->SessionSettings.BuildUniqueId = GetBuildUniqueId();
-        UE_LOG_ONLINE(Warning, TEXT("BuildUniqueId %d"), Session->SessionSettings.BuildUniqueId);
+        Session->SessionSettings.BuildUniqueId = GetBuildUniqueId();
+        UE_LOG_ONLINE(Warning, TEXT("bggggrrrrr BuildUniqueId %d"), Session->SessionSettings.BuildUniqueId);
+        UE_LOG_ONLINE(Warning, TEXT("Hello :)"), Session->SessionSettings.BuildUniqueId);
 
 		// Setup the host session info
 		FOnlineSessionInfoMakeshift* NewSessionInfo = new FOnlineSessionInfoMakeshift();
@@ -288,7 +294,7 @@ bool FOnlineSessionMakeshift::NeedsToAdvertise( FNamedOnlineSession& Session )
 
 uint32 FOnlineSessionMakeshift::CreateInternetSession(int32 HostingPlayerNum, FNamedOnlineSession* Session)
 {
-
+    check(Session);
     uint32 Result = E_FAIL;
 
     FOnlineAsyncTaskMakeshiftCreateServer* NewTask = new FOnlineAsyncTaskMakeshiftCreateServer(MakeshiftSubsystem, Session->SessionName);

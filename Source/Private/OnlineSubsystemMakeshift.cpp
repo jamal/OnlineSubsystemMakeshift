@@ -2,6 +2,7 @@
 
 #include "OnlineSubsystemMakeshiftPrivatePCH.h"
 #include "OnlineSubsystemMakeshift.h"
+#include "MakeshiftServer.h"
 #include "OnlineAsyncTaskManagerMakeshift.h"
 
 #include "OnlineSessionInterfaceMakeshift.h"
@@ -151,6 +152,9 @@ bool FOnlineSubsystemMakeshift::Init()
 	
 	if (bMakeshiftInit)
 	{
+		MakeshiftServer = new FMakeshiftServer(this);
+		MakeshiftServer->Init();
+
 		// Create the online async task thread
 		OnlineAsyncTaskThreadRunnable = new FOnlineAsyncTaskManagerMakeshift(this);
 		check(OnlineAsyncTaskThreadRunnable);
@@ -181,6 +185,13 @@ bool FOnlineSubsystemMakeshift::Shutdown()
 	UE_LOG_ONLINE(Display, TEXT("FOnlineSubsystemMakeshift::Shutdown()"));
 
 	FOnlineSubsystemImpl::Shutdown();
+
+	if (MakeshiftServer)
+	{
+		MakeshiftServer->Shutdown();
+		delete MakeshiftServer;
+		MakeshiftServer = nullptr;
+	}
 
 	if (OnlineAsyncTaskThread)
 	{

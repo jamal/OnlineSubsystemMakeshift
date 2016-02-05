@@ -18,5 +18,3 @@
 /** pre-pended to all NULL logging */
 #undef ONLINE_LOG_PREFIX
 #define ONLINE_LOG_PREFIX TEXT("MAKESHIFT: ")
-
-

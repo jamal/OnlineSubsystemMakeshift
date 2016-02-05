@@ -15,10 +15,10 @@ public class OnlineSubsystemMakeshift : ModuleRules
 				"CoreUObject", 
 				"Engine", 
 				"Sockets", 
+                "Networking",
 				"OnlineSubsystem", 
 				"OnlineSubsystemUtils",
 				"Json"
-			}
-			);
+			});
 	}
 }

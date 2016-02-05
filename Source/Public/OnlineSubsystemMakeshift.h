@@ -102,7 +102,11 @@ PACKAGE_SCOPE:
      */
     void QueueAsyncTask(class FOnlineAsyncTask* AsyncTask);
 
+	class FMakeshiftServer* GetMakeshiftServer();
+
 private:
+
+	class FMakeshiftServer* MakeshiftServer;
 
 	/** Interface to the session services */
 	FOnlineSessionMakeshiftPtr SessionInterface;
